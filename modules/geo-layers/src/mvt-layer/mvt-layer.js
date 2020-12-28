@@ -110,21 +110,14 @@ export default class MVTLayer extends TileLayer {
 
   renderSubLayers(props) {
     const {tile} = props;
-    const worldScale = Math.pow(2, tile.z);
 
-    const xScale = WORLD_SIZE / worldScale;
-    const yScale = -xScale;
-
-    const xOffset = (WORLD_SIZE * tile.x) / worldScale;
-    const yOffset = WORLD_SIZE * (1 - tile.y / worldScale);
-
-    const modelMatrix = new Matrix4().scale([xScale, yScale, 1]);
+    const modelMatrix = new Matrix4().scale(getModelMatrixScale(tile));
 
     props.autoHighlight = false;
 
     if (!this.context.viewport.resolution) {
       props.modelMatrix = modelMatrix;
-      props.coordinateOrigin = [xOffset, yOffset, 0];
+      props.coordinateOrigin = getCoordinateOrigin(tile);
       props.coordinateSystem = COORDINATE_SYSTEM.CARTESIAN;
       props.extensions = [...(props.extensions || []), new ClipExtension()];
     }
@@ -216,12 +209,54 @@ export default class MVTLayer extends TileLayer {
     return renderedFeatures;
   }
 
+  getViewportFeatures() {
+    const {tileset} = this.state;
+    const {uniqueIdProperty} = this.props;
+    const currentFrustumPlanes = this.context.viewport.getFrustumPlanes();
+    const featureCache = new Set();
+    let viewportFeatures = [];
+
+    tileset.selectedTiles.forEach(tile => {
+      const data = tile.data;
+
+      if (!Array.isArray(data)) {
+        return;
+      }
+
+      const transformationMatrix = new Matrix4()
+        .translate(getCoordinateOrigin(tile))
+        .scale(getModelMatrixScale(tile));
+
+      viewportFeatures = viewportFeatures.concat(
+        data.filter(f => {
+          const featureId = getFeatureUniqueId(f, uniqueIdProperty);
+          if (
+            !featureCache.has(featureId) &&
+            checkIfCoordsAreInsideFrustum(
+              transformationMatrix,
+              currentFrustumPlanes,
+              f.geometry.coordinates
+            )
+          ) {
+            featureCache.add(featureId);
+            return true;
+          }
+          return false;
+        })
+      );
+    });
+
+    return viewportFeatures;
+  }
+
   _onViewportChange() {
+    const {viewport} = this.context;
     const {onViewportChange} = this.props;
+
     if (onViewportChange) {
-      const {viewport} = this.context;
       onViewportChange({
         getRenderedFeatures: this.getRenderedFeatures.bind(this),
+        getViewportFeatures: this.getViewportFeatures.bind(this),
         viewport
       });
     }
@@ -265,6 +300,44 @@ function transformTileCoordsToWGS84(object, tile, viewport) {
   });
 
   return feature;
+}
+
+function getModelMatrixScale(tile) {
+  const worldScale = Math.pow(2, tile.z);
+  const xScale = WORLD_SIZE / worldScale;
+  const yScale = -xScale;
+
+  return [xScale, yScale, 1];
+}
+
+function getCoordinateOrigin(tile) {
+  const worldScale = Math.pow(2, tile.z);
+  const xOffset = (WORLD_SIZE * tile.x) / worldScale;
+  const yOffset = WORLD_SIZE * (1 - tile.y / worldScale);
+
+  return [xOffset, yOffset, 0];
+}
+
+function checkIfCoordsAreInsideFrustum(matrix, frustumPlanes, coords) {
+  if (Array.isArray(coords) && coords.length && typeof coords[0] === 'number') {
+    return coordIsInPlanes(frustumPlanes, matrix.transform(coords).concat(0));
+  }
+
+  return coords.some(c => {
+    if (Array.isArray(c) && Array.isArray(c[0])) {
+      return checkIfCoordsAreInsideFrustum(matrix, frustumPlanes, c);
+    }
+
+    return coordIsInPlanes(frustumPlanes, matrix.transform(c).concat(0));
+  });
+}
+
+function coordIsInPlanes(frustumPlanes, coords) {
+  return Object.keys(frustumPlanes).every(plane => {
+    const {normal, distance} = frustumPlanes[plane];
+
+    return normal.dot(coords) < distance;
+  });
 }
 
 MVTLayer.layerName = 'MVTLayer';

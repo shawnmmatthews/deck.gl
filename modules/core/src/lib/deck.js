@@ -155,6 +155,8 @@ export default class Deck {
     this.deckPicker = null;
 
     this._needsRedraw = true;
+    // Indicates that GPU context is lost and any rendering/interactions should be ignored
+    this._contextLost = false;
     this._pickRequest = {};
     // Pick and store the object under the pointer on `pointerdown`.
     // This object is reused for subsequent `onClick` and `onDrag*` callbacks.
@@ -174,6 +176,8 @@ export default class Deck {
     this._onRenderFrame = this._onRenderFrame.bind(this);
     this._onViewStateChange = this._onViewStateChange.bind(this);
     this._onInteractiveStateChange = this._onInteractiveStateChange.bind(this);
+    this._onWebGLContextLost = this._onWebGLContextLost.bind(this);
+    this._onWebGLContextRestored = this._onWebGLContextRestored.bind(this);
 
     if (props.viewState && props.initialViewState) {
       log.warn(
@@ -496,7 +500,14 @@ export default class Deck {
       autoResizeViewport: false,
       gl,
       onCreateContext: opts =>
-        createGLContext(Object.assign({}, glOptions, opts, {canvas: this.canvas, debug})),
+        createGLContext(
+          Object.assign({}, glOptions, opts, {
+            canvas: this.canvas,
+            debug,
+            onContextLost: this._onWebGLContextLost,
+            onContextRestored: this._onWebGLContextRestored
+          })
+        ),
       onInitialize: this._onRendererInitialized,
       onRender: this._onRenderFrame,
       onBeforeRender: props.onBeforeRender,
@@ -710,6 +721,10 @@ export default class Deck {
   }
 
   _onRenderFrame(animationProps) {
+    if (this._ignoreInteractions()) {
+      return;
+    }
+
     this._getFrameStats();
 
     // Log perf stats every second
@@ -809,6 +824,24 @@ export default class Deck {
       y: pos.y,
       radius: this.props.pickingRadius
     });
+  }
+
+  _onWebGLContextLost(event) {
+    this._contextLost = true;
+
+    if (this.props.onError) {
+      this.props.onError(event);
+    }
+  }
+
+  _onWebGLContextRestored(event) {
+    this._contextLost = false;
+
+    // TODO restore WebGL resources
+  }
+
+  _ignoreInteractions() {
+    return this._contextLost;
   }
 
   _getFrameStats() {

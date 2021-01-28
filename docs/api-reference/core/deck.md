@@ -343,6 +343,7 @@ Receives arguments:
 
 - `interactiveState` (Object)
   + `isDragging` (Boolean) - whether the pointer is down and moving
+  + `isHovering` (Boolean) - whether the pointer is over a pickable object
 
 Returns:
 
@@ -393,6 +394,30 @@ Allow browser default touch actions. See [hammer.js documentation](http://hammer
 
 By default, the deck canvas captures all touch interactions. This prop is useful for mobile applications to unblock default scrolling behavior. For example, use the combination `controller: {dragPan: false}` and `touchAction: 'pan-y'` to allow vertical page scroll when dragging over the canvas.
 
+##### `eventRecognizerOptions` (Object)
+
+- default: `{}`
+
+Set options for gesture recognition. May contain the following fields:
+
+- `pan` - an object that is [Hammer.Pan](http://hammerjs.github.io/recognizer-pan/) options. This gesture is used for drag events.
+- `pinch` - an object that is [Hammer.Pinch](http://hammerjs.github.io/recognizer-pinch/) options This gesture is used for two-finger touch events.
+- `tripan` - an object that is [Hammer.Pan](http://hammerjs.github.io/recognizer-pan/) options.  This gesture is used for three-finger touch events.
+- `tap` - an object that is [Hammer.Tap](http://hammerjs.github.io/recognizer-tap/) options. This gesture is used for the `onClick` callback.
+- `doubletap` - an object that is [Hammer.Tap](http://hammerjs.github.io/recognizer-tap/) options. This gesture is used for double click events.
+
+For example, the following setting makes panning less sensitive and clicking easier on mobile:
+
+```js
+new Deck({
+  // ...
+  eventRecognizerOptions: isMobile ? {
+    pan: {threshold: 10},
+    tap: {threshold: 5}
+  } : {}
+})
+```
+
 ##### `_pickable` (Boolean)
 
 * Default: `true`
@@ -432,6 +457,25 @@ Returns:
 A view state object that is used to update `Deck`'s internally tracked view state (see `initialViewState`). This can be used to intercept and modify the view state before the camera updates, see [add constraints to view state example](/docs/developer-guide/interactivity.md#add-constraints-to-view-state).
 
 If no value is returned, it's equivalent to `(viewState) => viewState`.
+
+##### `onInteractionStateChange` (Function)
+
+Called when the user has interacted with the deck.gl canvas, e.g. using mouse, touch or keyboard.
+
+`onInteractionStateChange(interactionState)`
+
+Receives arguments:
+
+* `interactionState` - Describes the current interaction. May include the following fields:
+  + `inTransition` (Boolean)
+  + `isDragging` (Boolean)
+  + `isPanning` (Boolean)
+  + `isRotating` (Boolean)
+  + `isZooming` (Boolean)
+
+Note:
+* `onInteractionStateChange` may be fired without `onViewStateChange`. For example, when the pointer is released at the end of a drag-pan, `isDragging` is reset to `false`, without the viewport's `longitude` and `latitude` changing.
+
 
 ##### `onHover` (Function)
 

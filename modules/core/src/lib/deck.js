@@ -74,11 +74,13 @@ function getPropTypes(PropTypes) {
     pickingRadius: PropTypes.number,
     useDevicePixels: PropTypes.oneOfType([PropTypes.bool, PropTypes.number]),
     touchAction: PropTypes.string,
+    eventRecognizerOptions: PropTypes.object,
 
     // Callbacks
     onWebGLInitialized: PropTypes.func,
     onResize: PropTypes.func,
     onViewStateChange: PropTypes.func,
+    onInteractionStateChange: PropTypes.func,
     onBeforeRender: PropTypes.func,
     onAfterRender: PropTypes.func,
     onLoad: PropTypes.func,
@@ -118,6 +120,7 @@ const defaultProps = {
   controller: null, // Rely on external controller, e.g. react-map-gl
   useDevicePixels: true,
   touchAction: 'none',
+  eventRecognizerOptions: {},
   _framebuffer: null,
   _animate: false,
   _pickable: true,
@@ -126,6 +129,7 @@ const defaultProps = {
   onWebGLInitialized: noop,
   onResize: noop,
   onViewStateChange: noop,
+  onInteractionStateChange: noop,
   onBeforeRender: noop,
   onAfterRender: noop,
   onLoad: noop,
@@ -164,6 +168,7 @@ export default class Deck {
 
     this.viewState = null; // Internal view state if no callback is supplied
     this.interactiveState = {
+      isHovering: false, // Whether the cursor is over a pickable object
       isDragging: false // Whether the cursor is down
     };
 
@@ -175,7 +180,7 @@ export default class Deck {
     this._onRendererInitialized = this._onRendererInitialized.bind(this);
     this._onRenderFrame = this._onRenderFrame.bind(this);
     this._onViewStateChange = this._onViewStateChange.bind(this);
-    this._onInteractiveStateChange = this._onInteractiveStateChange.bind(this);
+    this._onInteractionStateChange = this._onInteractionStateChange.bind(this);
     this._onWebGLContextLost = this._onWebGLContextLost.bind(this);
     this._onWebGLContextRestored = this._onWebGLContextRestored.bind(this);
 
@@ -573,6 +578,7 @@ export default class Deck {
     if (_pickRequest.event) {
       // Perform picking
       const {result, emptyInfo} = this._pick('pickObject', 'pickObject Time', _pickRequest);
+      this.interactiveState.isHovering = result.length > 0;
 
       // There are 4 possible scenarios:
       // result is [outInfo, pickedInfo] (moved from one pickable layer to another)
@@ -643,6 +649,7 @@ export default class Deck {
 
     this.eventManager = new EventManager(this.props.parent || gl.canvas, {
       touchAction: this.props.touchAction,
+      recognizerOptions: this.props.eventRecognizerOptions,
       events: {
         pointerdown: this._onPointerDown,
         pointermove: this._onPointerMove,
@@ -657,7 +664,7 @@ export default class Deck {
       timeline,
       eventManager: this.eventManager,
       onViewStateChange: this._onViewStateChange,
-      onInteractiveStateChange: this._onInteractiveStateChange,
+      onInteractionStateChange: this._onInteractionStateChange,
       views: this._getViews(),
       viewState: this._getViewState(),
       width: this.width,
@@ -777,10 +784,9 @@ export default class Deck {
     }
   }
 
-  _onInteractiveStateChange({isDragging = false}) {
-    if (isDragging !== this.interactiveState.isDragging) {
-      this.interactiveState.isDragging = isDragging;
-    }
+  _onInteractionStateChange(interactionState) {
+    this.interactiveState.isDragging = interactionState.isDragging;
+    this.props.onInteractionStateChange(interactionState);
   }
 
   _onEvent(event) {

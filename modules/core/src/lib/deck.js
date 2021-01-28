@@ -159,8 +159,10 @@ export default class Deck {
     this.deckPicker = null;
 
     this._needsRedraw = true;
+
     // Indicates that GPU context is lost and any rendering/interactions should be ignored
     this._contextLost = false;
+
     this._pickRequest = {};
     // Pick and store the object under the pointer on `pointerdown`.
     // This object is reused for subsequent `onClick` and `onDrag*` callbacks.
@@ -841,9 +843,9 @@ export default class Deck {
   }
 
   _onWebGLContextRestored(event) {
-    this._contextLost = false;
-
     // TODO restore WebGL resources
+
+    this._contextLost = false;
   }
 
   _ignoreInteractions() {

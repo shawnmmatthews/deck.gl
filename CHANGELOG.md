@@ -21,6 +21,9 @@ Ref: http://keepachangelog.com/en/0.3.0/
 
 ### deck.gl v8.4 Prereleases
 
+- onError is called in case of webglcontextlost event
+- rendering is stopped in case of webglcontextlost event
+
 #### deck.gl [8.4.0-beta.3] - Jan 28 2021
 
 - Fix SunLight calculation bugs (#5393)

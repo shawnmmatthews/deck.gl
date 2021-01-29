@@ -2,10 +2,6 @@
 
 ## Upgrading from deck.gl v8.3 to v8.4
 
-### webglcontextlost
-
-- onError callback is called in case of webglcontextlost event. You can provide additional information to the user about what happened. Rendering is stopped until webglcontextrestored event.
-
 ### wrapLongitude
 
 The behavior of `wrapLongitude` has changed. Before, setting this prop to `true` would project vertices to a copy of the map that is closer to the current center. Starting with v8.4, enabling this prop would "normalize" the geometry to the [-180, 180] longitude range. See the following list for layer-specific changes:

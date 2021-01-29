@@ -730,7 +730,7 @@ export default class Deck {
   }
 
   _onRenderFrame(animationProps) {
-    if (this._ignoreInteractions()) {
+    if (this._contextLost) {
       return;
     }
 
@@ -846,10 +846,6 @@ export default class Deck {
     // TODO restore WebGL resources
 
     this._contextLost = false;
-  }
-
-  _ignoreInteractions() {
-    return this._contextLost;
   }
 
   _getFrameStats() {

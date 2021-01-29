@@ -268,6 +268,10 @@ export default class Deck {
   }
 
   setProps(props) {
+    if (this._contextLost) {
+      return;
+    }
+
     this.stats.get('setProps Time').timeStart();
 
     if ('onLayerHover' in props) {
@@ -826,6 +830,10 @@ export default class Deck {
   }
 
   _onPointerDown(event) {
+    if (this._contextLost) {
+      return;
+    }
+
     const pos = event.offsetCenter;
     this._lastPointerDownInfo = this.pickObject({
       x: pos.x,
